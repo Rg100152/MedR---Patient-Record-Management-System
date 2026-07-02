@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedR – Patient Record Management System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      transition: background 0.3s;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin: 20px;
+      position: relative;
+    }
+    .splash {
+      text-align: center;
+    }
+    .splash img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 0.8; }
+    }
+    .hidden { display: none !important; }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #dcdde1;
+      border-radius: 8px;
+      font-size: 16px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: #3498db;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+      margin-top: 10px;
+    }
+    button:hover { background: #2980b9; }
+    .btn-secondary {
+      background: #95a5a6;
+    }
+    .btn-secondary:hover { background: #7f8c8d; }
+    .btn-danger {
+      background: #e74c3c;
+    }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 14px;
+      width: auto;
+      margin: 2px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header h2 {
+      color: #2c3e50;
+    }
+    .dashboard-stats {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      background: #ecf0f1;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      flex: 1;
+      margin: 0 5px;
+    }
+    .stat-number {
+      font-size: 28px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .stat-label {
+      font-size: 14px;
+      color: #7f8c8d;
+    }
+    .patient-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .patient-info {
+      cursor: pointer;
+      flex: 1;
+    }
+    .actions {
+      display: flex;
+      gap: 5px;
+    }
+    .search-bar {
+      display: flex;
+      margin-bottom: 15px;
+    }
+    .search-bar input {
+      flex: 1;
+      margin-right: 5px;
+    }
+    .tab-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ecf0f1;
+      padding-bottom: 10px;
+    }
+    .tab-nav button {
+      background: none;
+      border: none;
+      color: #7f8c8d;
+      font-weight: 600;
+      width: auto;
+      margin: 0;
+      padding: 8px 15px;
+    }
+    .tab-nav button.active {
+      color: #3498db;
+      border-bottom: 3px solid #3498db;
+      border-radius: 0;
+    }
+    .profile-pic {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: #bdc3c7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      color: white;
+      margin: 0 auto 15px;
+    }
+    .logout-link {
+      color: #e74c3c;
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 14px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2ecc71;
+      color: white;
+      padding: 12px 25px;
+      border-radius: 8px;
+      z-index: 1000;
+      display: none;
+    }
+    textarea { resize: vertical; }
+  </style>
+</head>
+<body>
+  <!-- Toast for notifications -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Main container - content will be swapped dynamically -->
+  <div id="app" class="container"></div>
+
+  <script>
+    // ==================== UTILS ====================
+    const app = document.getElementById('app');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg, isError = false) {
+      toast.textContent = msg;
+      toast.style.background = isError ? '#e74c3c' : '#2ecc71';
+      toast.style.display = 'block';
+      setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
+    // Simple unique ID generator
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    }
+
+    // ==================== LOCAL STORAGE HELPERS ====================
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('medr_users') || '[]');
+    }
+    function saveUsers(users) {
+      localStorage.setItem('medr_users', JSON.stringify(users));
+    }
+    function getPatients() {
+      return JSON.parse(localStorage.getItem('medr_patients') || '[]');
+    }
+    function savePatients(patients) {
+      localStorage.setItem('medr_patients', JSON.stringify(patients));
+    }
+    function getCurrentUser() {
+      return JSON.parse(localStorage.getItem('medr_current_user') || 'null');
+    }
+    function setCurrentUser(user) {
+      localStorage.setItem('medr_current_user', JSON.stringify(user));
+    }
+    function clearCurrentUser() {
+      localStorage.removeItem('medr_current_user');
+    }
+
+    // Initialize default admin if no users exist
+    if (getUsers().length === 0) {
+      saveUsers([{
+        id: generateId(),
+        name: 'Admin',
+        email: 'admin@medr.com',
+        password: 'admin123', // In production, hash!
+        mobile: '9876543210',
+        role: 'Admin',
+        createdAt: new Date().toISOString()
+      }]);
+    }
+
+    // ==================== PAGES (Rendering functions) ====================
+    function renderSplash() {
+      app.innerHTML = `
+        <div class="splash">
+          <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%233498db'/><text x='50' y='65' font-size='40' font-weight='bold' fill='white' text-anchor='middle' font-family='Arial'>+</text></svg>" alt="MedR Logo">
+          <h2 style="color:#2c3e50; margin-top:15px;">MedR</h2>
+          <p style="color:#7f8c8d;">Patient Record Management</p>
+        </div>
+      `;
+      setTimeout(() => renderLogin(), 2000);
+    }
+
+    function renderLogin() {
+      app.innerHTML = `
+        <h2 style="text-align:center; color:#2c3e50;">Login</h2>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="loginEmail" placeholder="admin@medr.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="admin123">
+        </div>
+        <button onclick="login()">Login</button>
+        <p style="text-align:center; margin-top:10px;">New user? <a href="#" onclick="renderRegister()" style="color:#3498db;">Register</a></p>
+      `;
+    }
+
+    function renderRegister() {
+      app.innerHTML = `
+        <h2 style="text-align:center; color:#2c3e50;">Register</h2>
+        <div class="form-group"><label>Full Name</label><input type="text" id="regName"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="regEmail"></div>
+        <div class="form-group"><label>Mobile</label><input type="tel" id="regMobile"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="regPassword"></div>
+        <div class="form-group"><label>Role</label>
+          <select id="regRole">
+            <option value="Doctor">Doctor</option>
+            <option value="Staff">Clinic Staff</option>
+            <option value="Receptionist">Receptionist</option>
+            <option value="Admin">Administrator</option>
+          </select>
+        </div>
+        <button onclick="register()">Register</button>
+        <p style="text-align:center; margin-top:10px;">Already have an account? <a href="#" onclick="renderLogin()" style="color:#3498db;">Login</a></p>
+      `;
+    }
+
+    function login() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const users = getUsers();
+      const user = users.find(u => u.email === email && u.password === password);
+      if (user) {
+        setCurrentUser(user);
+        renderDashboard();
+      } else {
+        showToast('Invalid credentials', true);
+      }
+    }
+
+    function register() {
+      const name = document.getElementById('regName').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const mobile = document.getElementById('regMobile').value.trim();
+      const password = document.getElementById('regPassword').value.trim();
+      const role = document.getElementById('regRole').value;
+      if (!name || !email || !password) {
+        showToast('Please fill all required fields', true);
+        return;
+      }
+      const users = getUsers();
+      if (users.some(u => u.email === email)) {
+        showToast('Email already registered', true);
+        return;
+      }
+      const newUser = {
+        id: generateId(),
+        name,
+        email,
+        mobile,
+        password, // plain text for demo
+        role,
+        createdAt: new Date().toISOString()
+      };
+      users.push(newUser);
+      saveUsers(users);
+      showToast('Registration successful! Please login.');
+      renderLogin();
+    }
+
+    function logout() {
+      clearCurrentUser();
+      renderLogin();
+    }
+
+    function renderDashboard() {
+      const user = getCurrentUser();
+      if (!user) { renderLogin(); return; }
+      const patients = getPatients();
+      const recentPatients = patients.slice(-3).reverse();
+      app.innerHTML = `
+        <div class="header">
+          <h2>Dashboard</h2>
+          <span onclick="logout()" class="logout-link">Logout</span>
+        </div>
+        <div class="dashboard-stats">
+          <div class="stat-box"><div class="stat-number">${patients.length}</div><div class="stat-label">Total Patients</div></div>
+          <div class="stat-box"><div class="stat-number">${recentPatients.length}</div><div class="stat-label">Recent</div></div>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+          <button onclick="renderAddPatient()">+ Add Patient</button>
+          <button class="btn-secondary" onclick="renderSearchPatient()">🔍 Search</button>
+        </div>
+        <h3 style="margin-bottom:10px;">Recent Patients</h3>
+        ${recentPatients.length === 0 ? '<p>No patients yet</p>' : recentPatients.map(p => `
+          <div class="patient-card">
+            <div class="patient-info" onclick="renderViewPatient('${p.id}')">
+              <strong>${p.name}</strong> (${p.age}, ${p.gender})<br>
+              <small>${p.disease || 'N/A'} - Dr. ${p.doctorName || '-'}</small>
+            </div>
+            <div class="actions">
+              <button class="btn-small" onclick="renderEditPatient('${p.id}')">Edit</button>
+              <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')">Del</button>
+            </div>
+          </div>
+        `).join('')}
+        <button style="margin-top:10px;" onclick="renderPatientList()">View All Patients</button>
+        <button class="btn-secondary" onclick="renderProfile()">👤 Profile</button>
+      `;
+    }
+
+    function renderAddPatient(patientId = null) {
+      const user = getCurrentUser();
+      if (!user) return;
+      const patient = patientId ? getPatients().find(p => p.id === patientId) : null;
+      const isEdit = !!patient;
+      app.innerHTML = `
+        <h2>${isEdit ? 'Edit' : 'Add'} Patient</h2>
+        <div class="form-group"><label>Name</label><input type="text" id="pName" value="${patient?.name || ''}"></div>
+        <div class="form-group"><label>Age</label><input type="number" id="pAge" value="${patient?.age || ''}"></div>
+        <div class="form-group"><label>Gender</label>
+          <select id="pGender">
+            <option ${patient?.gender === 'Male' ? 'selected' : ''}>Male</option>
+            <option ${patient?.gender === 'Female' ? 'selected' : ''}>Female</option>
+            <option ${patient?.gender === 'Other' ? 'selected' : ''}>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Blood Group</label>
+          <select id="pBlood">
+            ${['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(bg => `<option ${patient?.bloodGroup === bg ? 'selected' : ''}>${bg}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>Mobile</label><input type="tel" id="pMobile" value="${patient?.mobile || ''}"></div>
+        <div class="form-group"><label>Address</label><input type="text" id="pAddress" value="${patient?.address || ''}"></div>
+        <div class="form-group"><label>Disease</label><input type="text" id="pDisease" value="${patient?.disease || ''}"></div>
+        <div class="form-group"><label>Doctor Name</label><input type="text" id="pDoctor" value="${patient?.doctorName || ''}"></div>
+        <div class="form-group"><label>Medicine</label><input type="text" id="pMedicine" value="${patient?.medicine || ''}"></div>
+        <div class="form-group"><label>Admission Date</label><input type="date" id="pAdmitDate" value="${patient?.admissionDate || ''}"></div>
+        <div class="form-group"><label>Discharge Date</label><input type="date" id="pDischargeDate" value="${patient?.dischargeDate || ''}"></div>
+        <div class="form-group"><label>Notes</label><textarea id="pNotes" rows="3">${patient?.notes || ''}</textarea></div>
+        <button onclick="${isEdit ? `updatePatient('${patientId}')` : 'savePatient()'}">${isEdit ? 'Update' : 'Save'} Patient</button>
+        <button class="btn-secondary" onclick="renderDashboard()">Cancel</button>
+      `;
+    }
+
+    function savePatient() {
+      const user = getCurrentUser();
+      const name = document.getElementById('pName').value.trim();
+      if (!name) { showToast('Name is required', true); return; }
+      const patient = {
+        id: generateId(),
+        name,
+        age: document.getElementById('pAge').value,
+        gender: document.getElementById('pGender').value,
+        bloodGroup: document.getElementById('pBlood').value,
+        mobile: document.getElementById('pMobile').value,
+        address: document.getElementById('pAddress').value,
+        disease: document.getElementById('pDisease').value,
+        doctorName: document.getElementById('pDoctor').value,
+        medicine: document.getElementById('pMedicine').value,
+        admissionDate: document.getElementById('pAdmitDate').value,
+        dischargeDate: document.getElementById('pDischargeDate').value,
+        notes: document.getElementById('pNotes').value,
+        createdBy: user.id,
+        createdAt: new Date().toISOString()
+      };
+      const patients = getPatients();
+      patients.push(patient);
+      savePatients(patients);
+      showToast('Patient added successfully');
+      renderDashboard();
+    }
+
+    function updatePatient(patientId) {
+      const patients = getPatients();
+      const index = patients.findIndex(p => p.id === patientId);
+      if (index === -1) return;
+      const name = document.getElementById('pName').value.trim();
+      if (!name) { showToast('Name is required', true); return; }
+      patients[index] = {
+        ...patients[index],
+        name,
+        age: document.getElementById('pAge').value,
+        gender: document.getElementById('pGender').value,
+        bloodGroup: document.getElementById('pBlood').value,
+        mobile: document.getElementById('pMobile').value,
+        address: document.getElementById('pAddress').value,
+        disease: document.getElementById('pDisease').value,
+        doctorName: document.getElementById('pDoctor').value,
+        medicine: document.getElementById('pMedicine').value,
+        admissionDate: document.getElementById('pAdmitDate').value,
+        dischargeDate: document.getElementById('pDischargeDate').value,
+        notes: document.getElementById('pNotes').value
+      };
+      savePatients(patients);
+      showToast('Patient updated');
+      renderDashboard();
+    }
+
+    function deletePatient(patientId) {
+      if (confirm('Are you sure you want to delete this patient?')) {
+        let patients = getPatients();
+        patients = patients.filter(p => p.id !== patientId);
+        savePatients(patients);
+        showToast('Patient deleted');
+        renderDashboard();
+      }
+    }
+
+    function renderViewPatient(patientId) {
+      const patient = getPatients().find(p => p.id === patientId);
+      if (!patient) { renderDashboard(); return; }
+      app.innerHTML = `
+        <h2>Patient Details</h2>
+        <div style="background:#f8f9fa; padding:15px; border-radius:8px;">
+          <p><strong>ID:</strong> ${patient.id}</p>
+          <p><strong>Name:</strong> ${patient.name}</p>
+          <p><strong>Age:</strong> ${patient.age} | <strong>Gender:</strong> ${patient.gender}</p>
+          <p><strong>Blood Group:</strong> ${patient.bloodGroup}</p>
+          <p><strong>Mobile:</strong> ${patient.mobile}</p>
+          <p><strong>Address:</strong> ${patient.address}</p>
+          <p><strong>Disease:</strong> ${patient.disease}</p>
+          <p><strong>Doctor:</strong> ${patient.doctorName}</p>
+          <p><strong>Medicine:</strong> ${patient.medicine}</p>
+          <p><strong>Admission:</strong> ${patient.admissionDate} | <strong>Discharge:</strong> ${patient.dischargeDate}</p>
+          <p><strong>Notes:</strong> ${patient.notes}</p>
+        </div>
+        <button onclick="renderEditPatient('${patient.id}')">Edit</button>
+        <button class="btn-secondary" onclick="renderDashboard()">Back</button>
+      `;
+    }
+
+    function renderEditPatient(patientId) {
+      renderAddPatient(patientId);
+    }
+
+    function renderSearchPatient() {
+      app.innerHTML = `
+        <h2>Search Patients</h2>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search by name, disease, doctor...">
+          <button class="btn-small" onclick="searchPatients()">Go</button>
+        </div>
+        <div id="searchResults"></div>
+        <button class="btn-secondary" onclick="renderDashboard()">Back</button>
+      `;
+      document.getElementById('searchInput').addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') searchPatients();
+      });
+    }
+
+    function searchPatients() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      const patients = getPatients();
+      const results = patients.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        (p.disease && p.disease.toLowerCase().includes(query)) ||
+        (p.doctorName && p.doctorName.toLowerCase().includes(query)) ||
+        (p.mobile && p.mobile.includes(query))
+      );
+      const container = document.getElementById('searchResults');
+      if (results.length === 0) {
+        container.innerHTML = '<p>No patients found.</p>';
+      } else {
+        container.innerHTML = results.map(p => `
+          <div class="patient-card">
+            <div class="patient-info" onclick="renderViewPatient('${p.id}')">
+              <strong>${p.name}</strong> (${p.age}, ${p.gender}) - ${p.disease || 'N/A'}
+            </div>
+            <div class="actions">
+              <button class="btn-small" onclick="renderEditPatient('${p.id}')">Edit</button>
+              <button class="btn-small btn-danger" onclick="deletePatient('${p.id}');searchPatients();">Del</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderPatientList() {
+      const patients = getPatients();
+      app.innerHTML = `
+        <h2>All Patients (${patients.length})</h2>
+        ${patients.length === 0 ? '<p>No patients recorded.</p>' : patients.map(p => `
+          <div class="patient-card">
+            <div class="patient-info" onclick="renderViewPatient('${p.id}')">
+              <strong>${p.name}</strong> - ${p.disease || 'N/A'}
+            </div>
+            <div class="actions">
+              <button class="btn-small" onclick="renderEditPatient('${p.id}')">Edit</button>
+              <button class="btn-small btn-danger" onclick="deletePatient('${p.id}');renderPatientList();">Del</button>
+            </div>
+          </div>
+        `).join('')}
+        <button class="btn-secondary" onclick="renderDashboard()">Back to Dashboard</button>
+      `;
+    }
+
+    function renderProfile() {
+      const user = getCurrentUser();
+      if (!user) return;
+      app.innerHTML = `
+        <h2 style="text-align:center;">Profile</h2>
+        <div class="profile-pic">${user.name.charAt(0).toUpperCase()}</div>
+        <div class="form-group"><label>Name</label><input type="text" id="profName" value="${user.name}"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="profEmail" value="${user.email}"></div>
+        <div class="form-group"><label>Mobile</label><input type="tel" id="profMobile" value="${user.mobile}"></div>
+        <div class="form-group"><label>Role</label><input type="text" value="${user.role}" disabled></div>
+        <button onclick="updateProfile()">Save Changes</button>
+        <h3 style="margin-top:20px;">Change Password</h3>
+        <div class="form-group"><label>Current Password</label><input type="password" id="oldPass"></div>
+        <div class="form-group"><label>New Password</label><input type="password" id="newPass"></div>
+        <button onclick="changePassword()">Change Password</button>
+        <button class="btn-secondary" onclick="renderDashboard()">Back</button>
+      `;
+    }
+
+    function updateProfile() {
+      const user = getCurrentUser();
+      const name = document.getElementById('profName').value.trim();
+      const email = document.getElementById('profEmail').value.trim();
+      const mobile = document.getElementById('profMobile').value.trim();
+      if (!name || !email) { showToast('Name and email required', true); return; }
+      const users = getUsers();
+      const index = users.findIndex(u => u.id === user.id);
+      if (index !== -1) {
+        users[index].name = name;
+        users[index].email = email;
+        users[index].mobile = mobile;
+        saveUsers(users);
+        setCurrentUser(users[index]);
+        showToast('Profile updated');
+      }
+    }
+
+    function changePassword() {
+      const user = getCurrentUser();
+      const oldPass = document.getElementById('oldPass').value.trim();
+      const newPass = document.getElementById('newPass').value.trim();
+      if (oldPass !== user.password) {
+        showToast('Current password incorrect', true);
+        return;
+      }
+      if (!newPass || newPass.length < 4) {
+        showToast('New password must be at least 4 characters', true);
+        return;
+      }
+      const users = getUsers();
+      const index = users.findIndex(u => u.id === user.id);
+      if (index !== -1) {
+        users[index].password = newPass;
+        saveUsers(users);
+        const updatedUser = users[index];
+        setCurrentUser(updatedUser);
+        showToast('Password changed successfully');
+        document.getElementById('oldPass').value = '';
+        document.getElementById('newPass').value = '';
+      }
+    }
+
+    // Start with splash
+    renderSplash();
+  </script>
+</body>
+</html>
